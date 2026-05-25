@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
 import '../../models/invoice_model.dart';
-import '../../models/student_model.dart';
+import '../../core/api/invoice_api.dart';
 import 'widgets/invoice_summary_cards.dart';
 import 'widgets/invoice_data_table.dart';
 import 'invoice_detail_screen.dart';
@@ -17,6 +17,33 @@ class InvoicesScreen extends StatefulWidget {
 class _InvoicesScreenState extends State<InvoicesScreen> {
   Invoice? _selectedInvoice;
   String _searchQuery = '';
+  
+  List<Invoice> _invoices = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchInvoices();
+  }
+
+  Future<void> _fetchInvoices() async {
+    setState(() => _isLoading = true);
+    try {
+      final invoices = await InvoiceApi.getInvoices();
+      if (mounted) {
+        setState(() {
+          _invoices = invoices;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error fetching invoices: $e')));
+      }
+    }
+  }
 
   void _generateBatchInvoices() {
     final months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -45,44 +72,22 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final month = controller.text.trim();
               if (month.isNotEmpty) {
-                int generatedCount = 0;
-                setState(() {
-                  for (final student in dummyStudents) {
-                    // Check if an invoice already exists for this student and month
-                    final exists = dummyInvoices.any((inv) => inv.rollNumber.contains(student.rollNumber.replaceAll('Roll: ', '')) && inv.billingMonth == month);
-                    
-                    if (!exists) {
-                      // Determine fee amount
-                      String amount = '5,000.00'; // Default
-                      if (student.grade.contains('9')) {
-                        amount = '5,500.00';
-                      } else if (student.grade.contains('10')) {
-                        amount = '6,500.00';
-                      }
-
-                      // Create invoice
-                      final newInvoice = Invoice(
-                        id: '#INV-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}',
-                        studentName: student.fullName,
-                        rollNumber: 'Roll: ${student.rollNumber}',
-                        billingMonth: month,
-                        amount: 'PKR $amount',
-                        status: InvoiceStatus.pending,
-                      );
-                      
-                      dummyInvoices.insert(0, newInvoice); // Add to top
-                      generatedCount++;
-                    }
+                Navigator.pop(context); // Close dialog first
+                try {
+                  await InvoiceApi.generateBatchInvoices(month);
+                  _fetchInvoices(); // Refresh list after batch generation
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Batch invoice generation requested for $month.')),
+                    );
                   }
-                });
-                Navigator.pop(context);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Generated $generatedCount new invoices for $month.')),
-                  );
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  }
                 }
               }
             },
@@ -154,6 +159,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
           
           // Data Table
           InvoiceDataTable(
+            invoices: _invoices,
+            isLoading: _isLoading,
             searchQuery: _searchQuery,
             onSearchChanged: (val) {
               setState(() {
@@ -165,13 +172,20 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                 _selectedInvoice = invoice;
               });
             },
-            onMarkAsPaid: (invoice) {
-              setState(() {
-                invoice.status = InvoiceStatus.paid;
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Invoice ${invoice.id} marked as paid!')),
-              );
+            onMarkAsPaid: (invoice) async {
+              try {
+                await InvoiceApi.markAsPaid(invoice.id);
+                _fetchInvoices(); // Refresh the list
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Invoice ${invoice.id} marked as paid!')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error marking as paid: $e')));
+                }
+              }
             },
           ),
         ],

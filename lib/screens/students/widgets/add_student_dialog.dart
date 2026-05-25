@@ -54,22 +54,20 @@ class _AddStudentDialogState extends State<AddStudentDialog> {
   }
 
   void _saveStudent() {
-    if (_formKey.currentState!.validate()) {
-      final newStudent = Student(
-        id: widget.student?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        firstName: _firstNameController.text,
-        lastName: _lastNameController.text,
-        email: _emailController.text,
-        rollNumber: _rollNumberController.text,
-        grade: _gradeController.text,
-        section: _sectionController.text,
-        parentName: _parentNameController.text,
-        phone: _phoneController.text,
-        parentEmail: _parentEmailController.text,
-        avatarColor: widget.student?.avatarColor ?? '0xFFE0F7FA', // Default light cyan for newly added
-      );
-      Navigator.of(context).pop(newStudent);
-    }
+    final newStudent = Student(
+      id: widget.student?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      firstName: _firstNameController.text.trim(),
+      lastName: _lastNameController.text.trim(),
+      email: _emailController.text.trim(),
+      rollNumber: _rollNumberController.text.trim(),
+      grade: _gradeController.text.trim(),
+      section: _sectionController.text.trim(),
+      parentName: _parentNameController.text.trim(),
+      phone: _phoneController.text.trim(),
+      parentEmail: _parentEmailController.text.trim(),
+      avatarColor: widget.student?.avatarColor ?? '0xFFE0F7FA',
+    );
+    Navigator.of(context).pop(newStudent);
   }
 
   @override

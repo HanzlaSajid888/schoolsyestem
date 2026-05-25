@@ -1,12 +1,53 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../core/api/dashboard_api.dart';
 
-class StatCardsRow extends StatelessWidget {
+class StatCardsRow extends StatefulWidget {
   const StatCardsRow({super.key});
 
   @override
+  State<StatCardsRow> createState() => _StatCardsRowState();
+}
+
+class _StatCardsRowState extends State<StatCardsRow> {
+  bool _isLoading = true;
+  int _totalStudents = 0;
+  double _totalRevenue = 0;
+  int _pendingInvoicesCount = 0;
+  double _totalPendingAmount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSummary();
+  }
+
+  Future<void> _fetchSummary() async {
+    try {
+      final summary = await DashboardApi.getSummary();
+      if (mounted) {
+        setState(() {
+          _totalStudents = summary['totalStudents'] ?? 0;
+          _totalRevenue = (summary['totalRevenue'] ?? 0).toDouble();
+          _pendingInvoicesCount = summary['pendingInvoicesCount'] ?? 0;
+          _totalPendingAmount = (summary['totalPendingAmount'] ?? 0).toDouble();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator()));
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final double cardWidth = (constraints.maxWidth - 48) / 4;
@@ -17,38 +58,30 @@ class StatCardsRow extends StatelessWidget {
           children: [
             _buildStatCard(
               title: 'TOTAL STUDENTS',
-              value: '1,250',
-              change: '+5%',
-              isPositive: true,
+              value: '$_totalStudents',
               iconData: Icons.people_outline,
               iconColor: AppColors.primary,
               width: constraints.maxWidth > 800 ? cardWidth : (constraints.maxWidth > 450 ? constraints.maxWidth / 2 - 8 : constraints.maxWidth),
             ),
             _buildStatCard(
               title: 'TOTAL FEES COLLECTED',
-              value: 'PKR 850,000.00',
-              change: '+12%',
-              isPositive: true,
+              value: 'PKR ${_totalRevenue.toStringAsFixed(2)}',
               iconData: Icons.currency_exchange,
               iconColor: AppColors.success,
               width: constraints.maxWidth > 800 ? cardWidth : (constraints.maxWidth > 450 ? constraints.maxWidth / 2 - 8 : constraints.maxWidth),
             ),
             _buildStatCard(
-              title: 'PENDING FEES',
-              value: 'PKR 120,000.00',
-              change: '-2%',
-              isPositive: false,
-              iconData: Icons.access_time,
+              title: 'PENDING INVOICES',
+              value: '$_pendingInvoicesCount',
+              iconData: Icons.receipt_long,
               iconColor: AppColors.warning,
               width: constraints.maxWidth > 800 ? cardWidth : (constraints.maxWidth > 450 ? constraints.maxWidth / 2 - 8 : constraints.maxWidth),
             ),
             _buildStatCard(
-              title: 'COLLECTION RATE',
-              value: '85%',
-              change: '+3%',
-              isPositive: true,
-              iconData: Icons.trending_up,
-              iconColor: AppColors.purple,
+              title: 'TOTAL PENDING AMOUNT',
+              value: 'PKR ${_totalPendingAmount.toStringAsFixed(2)}',
+              iconData: Icons.access_time,
+              iconColor: AppColors.error,
               width: constraints.maxWidth > 800 ? cardWidth : (constraints.maxWidth > 450 ? constraints.maxWidth / 2 - 8 : constraints.maxWidth),
             ),
           ],
@@ -60,8 +93,6 @@ class StatCardsRow extends StatelessWidget {
   Widget _buildStatCard({
     required String title,
     required String value,
-    required String change,
-    required bool isPositive,
     required IconData iconData,
     required Color iconColor,
     required double width,
@@ -105,26 +136,6 @@ class StatCardsRow extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(value, style: AppTextStyles.metricValue),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(
-                isPositive ? Icons.arrow_upward : Icons.arrow_downward,
-                color: isPositive ? AppColors.success : AppColors.error,
-                size: 16,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                change,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: isPositive ? AppColors.success : AppColors.error,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text('vs last period', style: AppTextStyles.bodySmall),
-            ],
-          ),
         ],
       ),
     );

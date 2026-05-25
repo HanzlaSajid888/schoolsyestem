@@ -4,6 +4,8 @@ import '../../../core/theme/text_styles.dart';
 import '../../../models/invoice_model.dart';
 
 class InvoiceDataTable extends StatelessWidget {
+  final List<Invoice> invoices;
+  final bool isLoading;
   final Function(Invoice) onInvoiceTap;
   final Function(Invoice)? onMarkAsPaid;
   final String searchQuery;
@@ -11,6 +13,8 @@ class InvoiceDataTable extends StatelessWidget {
 
   const InvoiceDataTable({
     super.key,
+    required this.invoices,
+    this.isLoading = false,
     required this.onInvoiceTap,
     this.onMarkAsPaid,
     this.searchQuery = '',
@@ -19,7 +23,11 @@ class InvoiceDataTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final filteredInvoices = dummyInvoices.where((invoice) {
+    if (isLoading) {
+      return const Center(child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator()));
+    }
+
+    final filteredInvoices = invoices.where((invoice) {
       if (searchQuery.isEmpty) return true;
       final query = searchQuery.toLowerCase();
       return invoice.studentName.toLowerCase().contains(query) ||

@@ -12,6 +12,7 @@ class StudentSearchBar extends StatelessWidget {
   final ValueChanged<String?>? onSectionChanged;
   final VoidCallback? onCreateClass;
   final VoidCallback? onCreateSection;
+  final VoidCallback? onManageSections;
 
   const StudentSearchBar({
     super.key, 
@@ -24,14 +25,20 @@ class StudentSearchBar extends StatelessWidget {
     this.onSectionChanged,
     this.onCreateClass,
     this.onCreateSection,
+    this.onManageSections,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Container(
+              width: constraints.maxWidth > 800 ? 400 : constraints.maxWidth,
             height: 48,
             decoration: BoxDecoration(
               border: Border.all(color: AppColors.divider),
@@ -46,26 +53,23 @@ class StudentSearchBar extends StatelessWidget {
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               ),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        _buildDropdown(
+            _buildDropdown(
           hint: 'All Classes',
           value: selectedClass,
           items: classes,
           onChanged: onClassChanged,
           onCreateNew: onCreateClass,
         ),
-        const SizedBox(width: 16),
         _buildDropdown(
           hint: 'All Sections',
           value: selectedSection,
           items: sections,
           onChanged: onSectionChanged,
           onCreateNew: onCreateSection,
+          onManageItems: onManageSections,
         ),
-        const SizedBox(width: 16),
         Container(
           height: 48,
           width: 48,
@@ -80,6 +84,8 @@ class StudentSearchBar extends StatelessWidget {
         ),
       ],
     );
+      }
+    );
   }
 
   Widget _buildDropdown({
@@ -88,6 +94,7 @@ class StudentSearchBar extends StatelessWidget {
     required List<String> items,
     required ValueChanged<String?>? onChanged,
     required VoidCallback? onCreateNew,
+    VoidCallback? onManageItems,
   }) {
     return Container(
       height: 48,
@@ -114,10 +121,17 @@ class StudentSearchBar extends StatelessWidget {
               value: '_CREATE_NEW_',
               child: Text('➕ Create New...', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
             ),
+            if (onManageItems != null)
+              const DropdownMenuItem<String>(
+                value: '_MANAGE_ITEMS_',
+                child: Text('➖ Remove Section...', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              ),
           ],
           onChanged: (val) {
             if (val == '_CREATE_NEW_') {
               onCreateNew?.call();
+            } else if (val == '_MANAGE_ITEMS_') {
+              onManageItems?.call();
             } else {
               onChanged?.call(val);
             }

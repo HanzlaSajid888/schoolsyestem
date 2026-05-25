@@ -19,6 +19,17 @@ class Invoice {
     required this.amount,
     required this.status,
   });
+
+  factory Invoice.fromJson(Map<String, dynamic> json) {
+    return Invoice(
+      id: json['id'] ?? json['invoiceNumber'] ?? '',
+      studentName: json['studentName'] ?? '',
+      rollNumber: json['rollNumber'] ?? '',
+      billingMonth: json['billingMonth'] ?? '',
+      amount: 'PKR ${json['amount'] ?? 0}', // Hardcoding PKR as per schema
+      status: json['status'] == 'paid' ? InvoiceStatus.paid : InvoiceStatus.pending,
+    );
+  }
 }
 
 // Dummy Data

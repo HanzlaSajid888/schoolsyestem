@@ -88,7 +88,6 @@ class _MainLayoutState extends State<MainLayout> {
           _buildMenuItem(0, 'Dashboard', Icons.grid_view_rounded, isDesktop),
           _buildMenuItem(1, 'Students', Icons.people_outline, isDesktop),
           _buildMenuItem(2, 'Fees & Invoices', Icons.receipt_long_outlined, isDesktop),
-          _buildMenuItem(3, 'Settings', Icons.settings_outlined, isDesktop),
           
           const Spacer(),
           // Sign Out
@@ -149,8 +148,6 @@ class _MainLayoutState extends State<MainLayout> {
           ),
           SizedBox(width: isDesktop ? 24 : 12),
           // Actions
-          const Icon(Icons.notifications_none, color: AppColors.textSecondary),
-          SizedBox(width: isDesktop ? 24 : 12),
           Row(
             children: [
               if (isDesktop) ...[

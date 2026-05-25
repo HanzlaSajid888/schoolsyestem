@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/text_styles.dart';
 import '../../models/student_model.dart';
+import '../../core/api/student_api.dart';
 import 'widgets/student_search_bar.dart';
 import 'widgets/student_data_table.dart';
 import 'widgets/add_student_dialog.dart';
@@ -18,6 +19,36 @@ class _StudentsScreenState extends State<StudentsScreen> {
   String? _selectedClass;
   String? _selectedSection;
 
+  List<Student> _students = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchStudents();
+  }
+
+  Future<void> _fetchStudents() async {
+    setState(() => _isLoading = true);
+    try {
+      final students = await StudentApi.getStudents(
+        query: _searchQuery,
+        classFilter: _selectedClass,
+      );
+      if (mounted) {
+        setState(() {
+          _students = students;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
   void _showAddStudentDialog() async {
     final Student? newStudent = await showDialog<Student>(
       context: context,
@@ -26,13 +57,20 @@ class _StudentsScreenState extends State<StudentsScreen> {
     );
 
     if (newStudent != null) {
-      setState(() {
-        dummyStudents.insert(0, newStudent); // Add to top of list
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${newStudent.fullName} enrolled successfully!')),
-        );
+      try {
+        final added = await StudentApi.addStudent(newStudent);
+        setState(() {
+          _students.insert(0, added);
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${added.fullName} enrolled successfully!')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error adding student: $e')));
+        }
       }
     }
   }
@@ -60,6 +98,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                   dummyClasses.add(controller.text);
                   _selectedClass = controller.text;
                 });
+                _fetchStudents();
                 Navigator.pop(context);
               }
             },
@@ -105,6 +144,55 @@ class _StudentsScreenState extends State<StudentsScreen> {
     );
   }
 
+  void _showRemoveSectionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Remove Sections'),
+              content: SizedBox(
+                width: 300,
+                child: dummySections.isEmpty
+                    ? const Text('No sections available to remove.')
+                    : ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: dummySections.length,
+                        itemBuilder: (context, index) {
+                          final section = dummySections[index];
+                          return ListTile(
+                            title: Text(section),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                setDialogState(() {
+                                  dummySections.removeAt(index);
+                                });
+                                setState(() {
+                                  if (_selectedSection == section) {
+                                    _selectedSection = null;
+                                  }
+                                });
+                              },
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Done'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _editStudent(Student student) async {
     final Student? updatedStudent = await showDialog<Student>(
       context: context,
@@ -113,16 +201,23 @@ class _StudentsScreenState extends State<StudentsScreen> {
     );
 
     if (updatedStudent != null) {
-      setState(() {
-        final index = dummyStudents.indexWhere((s) => s.id == student.id);
-        if (index != -1) {
-          dummyStudents[index] = updatedStudent;
+      try {
+        final result = await StudentApi.updateStudent(student.id, updatedStudent);
+        setState(() {
+          final index = _students.indexWhere((s) => s.id == student.id);
+          if (index != -1) {
+            _students[index] = result;
+          }
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${result.fullName} updated successfully!')),
+          );
         }
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${updatedStudent.fullName} updated successfully!')),
-        );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error updating student: $e')));
+        }
       }
     }
   }
@@ -136,15 +231,22 @@ class _StudentsScreenState extends State<StudentsScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                dummyStudents.removeWhere((s) => s.id == student.id);
-              });
-              Navigator.pop(context);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${student.fullName} deleted!')),
-                );
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog first
+              try {
+                await StudentApi.deleteStudent(student.id);
+                setState(() {
+                  _students.removeWhere((s) => s.id == student.id);
+                });
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${student.fullName} deleted!')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error deleting: $e')));
+                }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
@@ -203,27 +305,26 @@ class _StudentsScreenState extends State<StudentsScreen> {
             selectedClass: _selectedClass,
             selectedSection: _selectedSection,
             onSearchChanged: (query) {
-              setState(() {
-                _searchQuery = query;
-              });
+              setState(() => _searchQuery = query);
+              _fetchStudents(); // Re-fetch from API
             },
             onClassChanged: (val) {
-              setState(() {
-                _selectedClass = val;
-              });
+              setState(() => _selectedClass = val);
+              _fetchStudents(); // Re-fetch from API
             },
             onSectionChanged: (val) {
-              setState(() {
-                _selectedSection = val;
-              });
+              setState(() => _selectedSection = val);
             },
             onCreateClass: _showAddClassDialog,
             onCreateSection: _showAddSectionDialog,
+            onManageSections: _showRemoveSectionDialog,
           ),
           const SizedBox(height: 24),
           
           // Data Table
           StudentDataTable(
+            students: _students,
+            isLoading: _isLoading,
             searchQuery: _searchQuery,
             selectedClass: _selectedClass,
             selectedSection: _selectedSection,

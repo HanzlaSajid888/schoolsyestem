@@ -4,6 +4,8 @@ import '../../../core/theme/text_styles.dart';
 import '../../../models/student_model.dart';
 
 class StudentDataTable extends StatelessWidget {
+  final List<Student> students;
+  final bool isLoading;
   final String searchQuery;
   final String? selectedClass;
   final String? selectedSection;
@@ -12,6 +14,8 @@ class StudentDataTable extends StatelessWidget {
 
   const StudentDataTable({
     super.key, 
+    required this.students,
+    this.isLoading = false,
     this.searchQuery = '',
     this.selectedClass,
     this.selectedSection,
@@ -21,7 +25,11 @@ class StudentDataTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final filteredStudents = dummyStudents.where((student) {
+    if (isLoading) {
+      return const Center(child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator()));
+    }
+
+    final filteredStudents = students.where((student) {
       // Class filter
       if (selectedClass != null && student.grade != selectedClass) {
         return false;
@@ -99,24 +107,8 @@ class StudentDataTable extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'Showing ${filteredStudents.length} of ${dummyStudents.length} students',
+                          'Showing ${filteredStudents.length} of ${students.length} students',
                           style: AppTextStyles.bodyMedium,
-                        ),
-                        Row(
-                          children: [
-                            TextButton(
-                              onPressed: null, // Disabled
-                              child: Text('Previous', style: AppTextStyles.bodyMedium),
-                            ),
-                            const SizedBox(width: 8),
-                            TextButton(
-                              onPressed: () {},
-                              style: TextButton.styleFrom(
-                                backgroundColor: AppColors.primary.withOpacity(0.1),
-                              ),
-                              child: const Text('Next', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
-                            ),
-                          ],
                         ),
                       ],
                     ),
@@ -166,12 +158,24 @@ class StudentDataTable extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(student.fullName, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold)),
-                    Text(student.email, style: AppTextStyles.bodySmall),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        student.fullName, 
+                        style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        student.email, 
+                        style: AppTextStyles.bodySmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -207,7 +211,14 @@ class StudentDataTable extends StatelessWidget {
                   children: [
                     const Icon(Icons.phone_outlined, size: 14, color: AppColors.textSecondary),
                     const SizedBox(width: 4),
-                    Text(student.phone, style: AppTextStyles.bodySmall),
+                    Expanded(
+                      child: Text(
+                        student.phone, 
+                        style: AppTextStyles.bodySmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -215,7 +226,14 @@ class StudentDataTable extends StatelessWidget {
                   children: [
                     const Icon(Icons.email_outlined, size: 14, color: AppColors.textSecondary),
                     const SizedBox(width: 4),
-                    Text(student.parentEmail, style: AppTextStyles.bodySmall),
+                    Expanded(
+                      child: Text(
+                        student.parentEmail, 
+                        style: AppTextStyles.bodySmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ],

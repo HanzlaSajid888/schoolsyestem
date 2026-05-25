@@ -1,12 +1,51 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
+import '../../../core/api/dashboard_api.dart';
 
-class InvoiceSummaryCards extends StatelessWidget {
+class InvoiceSummaryCards extends StatefulWidget {
   const InvoiceSummaryCards({super.key});
 
   @override
+  State<InvoiceSummaryCards> createState() => _InvoiceSummaryCardsState();
+}
+
+class _InvoiceSummaryCardsState extends State<InvoiceSummaryCards> {
+  bool _isLoading = true;
+  double _totalPendingAmount = 0;
+  double _totalRevenue = 0;
+  int _pendingInvoicesCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSummary();
+  }
+
+  Future<void> _fetchSummary() async {
+    try {
+      final summary = await DashboardApi.getSummary();
+      if (mounted) {
+        setState(() {
+          _totalPendingAmount = (summary['totalPendingAmount'] ?? 0).toDouble();
+          _totalRevenue = (summary['totalRevenue'] ?? 0).toDouble();
+          _pendingInvoicesCount = summary['pendingInvoicesCount'] ?? 0;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()));
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final cardWidth = (constraints.maxWidth - 32) / 3;
@@ -16,21 +55,21 @@ class InvoiceSummaryCards extends StatelessWidget {
           children: [
             _buildCard(
               title: 'TOTAL OUTSTANDING',
-              value: 'PKR 120,000.00',
+              value: 'PKR ${_totalPendingAmount.toStringAsFixed(2)}',
               iconData: Icons.access_time,
               iconColor: AppColors.warning,
               width: constraints.maxWidth > 800 ? cardWidth : constraints.maxWidth,
             ),
             _buildCard(
-              title: 'COLLECTED THIS MONTH',
-              value: 'PKR 580,000.00',
+              title: 'TOTAL COLLECTED',
+              value: 'PKR ${_totalRevenue.toStringAsFixed(2)}',
               iconData: Icons.check_circle_outline,
               iconColor: AppColors.success,
               width: constraints.maxWidth > 800 ? cardWidth : constraints.maxWidth,
             ),
             _buildCard(
-              title: 'OVERDUE PAYMENTS',
-              value: 'PKR 45,000.00',
+              title: 'PENDING INVOICES',
+              value: '$_pendingInvoicesCount',
               iconData: Icons.error_outline,
               iconColor: AppColors.error,
               width: constraints.maxWidth > 800 ? cardWidth : constraints.maxWidth,

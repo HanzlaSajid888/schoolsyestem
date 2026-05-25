@@ -25,6 +25,38 @@ class Student {
     required this.avatarColor,
   });
 
+  factory Student.fromJson(Map<String, dynamic> json) {
+    return Student(
+      id: json['id']?.toString() ?? '',
+      firstName: json['firstName'] ?? '',
+      lastName: json['lastName'] ?? '',
+      email: json['email'] ?? '',
+      rollNumber: json['rollNumber'] ?? '',
+      grade: json['grade'] ?? '',
+      section: json['section'] ?? '',
+      parentName: json['parentName'] ?? '',
+      phone: json['phone'] ?? '',
+      parentEmail: json['parentEmail'] ?? '',
+      avatarColor: json['avatarColor'] ?? '0xFFE3F2FD',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (id.isNotEmpty) 'id': id,
+      'firstName': firstName,
+      'lastName': lastName,
+      'email': email,
+      'rollNumber': rollNumber,
+      'grade': grade,
+      'section': section,
+      'parentName': parentName,
+      'phone': phone,
+      'parentEmail': parentEmail,
+      'avatarColor': avatarColor,
+    };
+  }
+
   String get fullName => '$firstName $lastName';
   String get initials => '${firstName[0]}${lastName[0]}';
 }

@@ -3,8 +3,118 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 
-class FeeTrendChart extends StatelessWidget {
+import '../../../core/api/dashboard_api.dart';
+
+class FeeTrendChart extends StatefulWidget {
   const FeeTrendChart({super.key});
+
+  @override
+  State<FeeTrendChart> createState() => _FeeTrendChartState();
+}
+
+class _FeeTrendChartState extends State<FeeTrendChart> {
+  List<BarChartGroupData> _barGroups = [];
+  List<String> _months = [];
+  bool _isLoading = true;
+  int _selectedMonths = 6;
+  double _maxY = 800;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTrends();
+  }
+
+  Future<void> _fetchTrends() async {
+    setState(() => _isLoading = true);
+    try {
+      final trends = await DashboardApi.getTrends(months: _selectedMonths);
+      if (trends.isNotEmpty) {
+        final List<BarChartGroupData> newBarGroups = [];
+        final List<String> newMonths = [];
+        double tempMaxY = 0;
+        
+        for (int i = 0; i < trends.length && i < _selectedMonths; i++) {
+          final trend = trends[i];
+          final double totalExpected = (trend['totalExpected'] ?? 0).toDouble() / 1000;
+          final double paid = (trend['paidAmount'] ?? 0).toDouble() / 1000;
+          
+          if (totalExpected > tempMaxY) tempMaxY = totalExpected;
+
+          newBarGroups.add(
+            BarChartGroupData(
+              x: i,
+              barRods: [
+                BarChartRodData(
+                  toY: totalExpected,
+                  width: 16,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                  rodStackItems: [
+                    BarChartRodStackItem(0, paid, AppColors.primary),
+                    BarChartRodStackItem(paid, totalExpected, AppColors.primary.withOpacity(0.3)),
+                  ],
+                ),
+              ],
+            ),
+          );
+          newMonths.add(trend['month']?.toString().substring(0, 3) ?? '');
+        }
+        
+        // Pad with zeros if less than selected
+        while (newBarGroups.length < _selectedMonths) {
+          newBarGroups.add(
+            BarChartGroupData(
+              x: newBarGroups.length,
+              barRods: [
+                BarChartRodData(toY: 0, width: 16),
+              ],
+            ),
+          );
+          newMonths.add('');
+        }
+
+        double calculatedMax = tempMaxY * 1.2;
+        if (calculatedMax < 100) calculatedMax = 100;
+
+        // Create empty bars for initial state to trigger entry animation
+        final emptyBars = newBarGroups.map((g) => BarChartGroupData(
+          x: g.x, 
+          barRods: [BarChartRodData(toY: 0, width: 16)]
+        )).toList();
+
+        setState(() {
+          _barGroups = emptyBars;
+          _months = newMonths;
+          _maxY = calculatedMax;
+          _isLoading = false;
+        });
+
+        // Wait slightly, then set the real values so fl_chart animates them
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            setState(() {
+              _barGroups = newBarGroups;
+            });
+          }
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      debugPrint('Error fetching trends: $e');
+    }
+  }
+
+  Widget _buildLegendItem(String title, Color color) {
+    return Row(
+      children: [
+        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,34 +142,57 @@ class FeeTrendChart extends StatelessWidget {
                 children: [
                   Text('Fee Collection Trend', style: AppTextStyles.h3),
                   const SizedBox(height: 4),
-                  Text('Monthly collection overview for 2024', style: AppTextStyles.bodyMedium),
+                  Row(
+                    children: [
+                      Text('Monthly collection overview', style: AppTextStyles.bodyMedium),
+                      const SizedBox(width: 16),
+                      _buildLegendItem('Paid', AppColors.primary),
+                      const SizedBox(width: 12),
+                      _buildLegendItem('Pending', AppColors.primary.withOpacity(0.3)),
+                    ],
+                  ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
                   border: Border.all(color: AppColors.divider),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Row(
-                  children: [
-                    Text('Last 6 Months', style: AppTextStyles.bodyMedium),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.keyboard_arrow_down, size: 16),
-                  ],
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: _selectedMonths,
+                    icon: const Icon(Icons.keyboard_arrow_down, size: 16),
+                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textPrimary),
+                    items: const [
+                      DropdownMenuItem(value: 3, child: Text('Last 3 Months')),
+                      DropdownMenuItem(value: 6, child: Text('Last 6 Months')),
+                      DropdownMenuItem(value: 12, child: Text('Last 12 Months')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null && val != _selectedMonths) {
+                        setState(() {
+                          _selectedMonths = val;
+                        });
+                        _fetchTrends();
+                      }
+                    },
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 32),
-          SizedBox(
+          _isLoading 
+            ? const SizedBox(height: 250, child: Center(child: CircularProgressIndicator()))
+            : SizedBox(
             height: 250,
-            child: LineChart(
-              LineChartData(
+            child: BarChart(
+              BarChartData(
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  horizontalInterval: 200,
+                  horizontalInterval: _maxY > 0 ? _maxY / 4 : 200,
                   getDrawingHorizontalLine: (value) {
                     return FlLine(
                       color: AppColors.divider.withOpacity(0.5),
@@ -80,14 +213,11 @@ class FeeTrendChart extends StatelessWidget {
                       getTitlesWidget: (value, meta) {
                         const style = TextStyle(color: AppColors.textSecondary, fontSize: 12);
                         Widget text;
-                        switch (value.toInt()) {
-                          case 0: text = const Text('Jan', style: style); break;
-                          case 1: text = const Text('Feb', style: style); break;
-                          case 2: text = const Text('Mar', style: style); break;
-                          case 3: text = const Text('Apr', style: style); break;
-                          case 4: text = const Text('May', style: style); break;
-                          case 5: text = const Text('Jun', style: style); break;
-                          default: text = const Text('', style: style); break;
+                        final index = value.toInt();
+                        if (index >= 0 && index < _months.length) {
+                          text = Text(_months[index], style: style);
+                        } else {
+                          text = const Text('', style: style);
                         }
                         return SideTitleWidget(meta: meta, child: text);
                       },
@@ -96,11 +226,12 @@ class FeeTrendChart extends StatelessWidget {
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      interval: 200,
+                      interval: _maxY > 0 ? _maxY / 4 : 200,
                       getTitlesWidget: (value, meta) {
+                        if (value == 0) return const SizedBox.shrink();
                         return SideTitleWidget(
                           meta: meta,
-                          child: Text('Rs.${value}k', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                          child: Text('Rs.${value.toInt()}k', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                         );
                       },
                       reservedSize: 50,
@@ -108,32 +239,12 @@ class FeeTrendChart extends StatelessWidget {
                   ),
                 ),
                 borderData: FlBorderData(show: false),
-                minX: 0,
-                maxX: 5,
-                minY: 0,
-                maxY: 800,
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: const [
-                      FlSpot(0, 300),
-                      FlSpot(1, 400),
-                      FlSpot(2, 350),
-                      FlSpot(3, 500),
-                      FlSpot(4, 450),
-                      FlSpot(5, 550),
-                    ],
-                    isCurved: true,
-                    color: AppColors.primary,
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: AppColors.primary.withOpacity(0.1),
-                    ),
-                  ),
-                ],
+                barGroups: _barGroups,
+                maxY: _maxY,
+                alignment: BarChartAlignment.spaceAround,
               ),
+              swapAnimationDuration: const Duration(milliseconds: 1000),
+              swapAnimationCurve: Curves.easeOutQuart,
             ),
           ),
         ],
