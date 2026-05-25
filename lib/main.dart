@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/main_layout.dart';
+import 'screens/auth/login_screen.dart';
 import 'core/theme/colors.dart';
 
-void main() {
-  runApp(const EduStreamApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  final isLoggedIn = prefs.containsKey('auth_token');
+  
+  runApp(EduStreamApp(isLoggedIn: isLoggedIn));
 }
 
 class EduStreamApp extends StatelessWidget {
-  const EduStreamApp({super.key});
+  final bool isLoggedIn;
+  
+  const EduStreamApp({super.key, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +30,7 @@ class EduStreamApp extends StatelessWidget {
           Theme.of(context).textTheme,
         ),
       ),
-      home: const MainLayout(),
+      home: isLoggedIn ? const MainLayout() : const LoginScreen(),
     );
   }
 }

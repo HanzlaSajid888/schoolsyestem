@@ -13,7 +13,7 @@ import 'package:untitled/main.dart';
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const EduStreamApp());
+    await tester.pumpWidget(const EduStreamApp(isLoggedIn: false));
 
     // Verify that our app renders the Dashboard Summary text.
     expect(find.text('Dashboard Summary'), findsOneWidget);

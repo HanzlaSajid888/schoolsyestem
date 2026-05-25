@@ -5,6 +5,8 @@ import 'dashboard/dashboard_screen.dart';
 import 'students/students_screen.dart';
 import 'invoices/invoices_screen.dart';
 import 'settings/settings_screen.dart';
+import '../core/api/auth_api.dart';
+import 'auth/login_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -15,6 +17,7 @@ class MainLayout extends StatefulWidget {
 
 class _MainLayoutState extends State<MainLayout> {
   int _selectedIndex = 0;
+  bool _isSignOutHovered = false;
 
   final List<Widget> _screens = [
     const DashboardScreen(),
@@ -94,12 +97,26 @@ class _MainLayoutState extends State<MainLayout> {
           Padding(
             padding: const EdgeInsets.all(24.0),
             child: InkWell(
-              onTap: () {},
+              onHover: (value) {
+                setState(() {
+                  _isSignOutHovered = value;
+                });
+              },
+              onTap: () async {
+                await AuthApi.logout();
+                if (mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+                  );
+                }
+              },
               child: Row(
                 children: [
-                  const Icon(Icons.logout, color: AppColors.textSecondary),
+                  Icon(Icons.logout, color: _isSignOutHovered ? AppColors.error : AppColors.textSecondary),
                   const SizedBox(width: 16),
-                  Text('Sign Out', style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textSecondary)),
+                  Text('Sign Out', style: AppTextStyles.bodyLarge.copyWith(color: _isSignOutHovered ? AppColors.error : AppColors.textSecondary)),
                 ],
               ),
             ),
