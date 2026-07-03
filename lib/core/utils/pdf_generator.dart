@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../models/invoice_model.dart';
@@ -6,6 +7,14 @@ import '../../models/student_model.dart';
 
 Future<Uint8List> generateInvoicePdf(Invoice invoice, Student student) async {
   final pdf = pw.Document();
+
+  pw.MemoryImage? fbrLogoImage;
+  try {
+    final imageBytes = await rootBundle.load('assets/images/fbr_logo.png');
+    fbrLogoImage = pw.MemoryImage(imageBytes.buffer.asUint8List());
+  } catch (e) {
+    print('Failed to load FBR logo: $e');
+  }
 
   pdf.addPage(
     pw.Page(
@@ -36,6 +45,20 @@ Future<Uint8List> generateInvoicePdf(Invoice invoice, Student student) async {
                     pw.Text('INVOICE', style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold, color: PdfColors.green)),
                     pw.SizedBox(height: 8),
                     pw.Text('TRANSACTION ID: ${invoice.id}', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                    if (invoice.fbrInvoiceNumber != null) ...[
+                      pw.SizedBox(height: 8),
+                      if (fbrLogoImage != null)
+                        pw.Image(fbrLogoImage, width: 60)
+                      else
+                        pw.Container(
+                          padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: pw.BoxDecoration(
+                            color: PdfColors.green900,
+                            borderRadius: pw.BorderRadius.circular(4),
+                          ),
+                          child: pw.Text('FBR POS INTEGRATED', style: pw.TextStyle(color: PdfColors.white, fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        ),
+                    ],
                   ],
                 ),
               ],
@@ -159,9 +182,38 @@ Future<Uint8List> generateInvoicePdf(Invoice invoice, Student student) async {
             // Footer
             pw.Divider(color: PdfColors.grey300),
             pw.SizedBox(height: 8),
-            pw.Text(
-              'Note: This is a system-generated invoice valid for the 2024 academic cycle. Please ensure payment is cleared before the due date to avoid late surcharges.',
-              style: pw.TextStyle(color: PdfColors.grey600, fontSize: 10, fontStyle: pw.FontStyle.italic),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: pw.CrossAxisAlignment.end,
+              children: [
+                pw.Expanded(
+                  child: pw.Text(
+                    'Note: This is a system-generated invoice valid for the 2024 academic cycle. Please ensure payment is cleared before the due date to avoid late surcharges.',
+                    style: pw.TextStyle(color: PdfColors.grey600, fontSize: 10, fontStyle: pw.FontStyle.italic),
+                  ),
+                ),
+                if (invoice.fbrInvoiceNumber != null) ...[
+                  pw.SizedBox(width: 16),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.center,
+                    children: [
+                      pw.Text('FBR Invoice #${invoice.fbrInvoiceNumber}', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                      pw.SizedBox(height: 4),
+                      pw.SizedBox(
+                        height: 60,
+                        width: 60,
+                        child: pw.BarcodeWidget(
+                          barcode: pw.Barcode.qrCode(),
+                          data: invoice.fbrInvoiceNumber!,
+                          color: PdfColors.black,
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text('Scan to verify', style: const pw.TextStyle(fontSize: 6, color: PdfColors.grey700)),
+                    ],
+                  ),
+                ],
+              ],
             ),
           ],
         );

@@ -9,6 +9,7 @@ class Invoice {
   final String rollNumber;
   final String billingMonth;
   final String amount;
+  final String? fbrInvoiceNumber;
   InvoiceStatus status;
 
   Invoice({
@@ -17,6 +18,7 @@ class Invoice {
     required this.rollNumber,
     required this.billingMonth,
     required this.amount,
+    this.fbrInvoiceNumber,
     required this.status,
   });
 
@@ -27,6 +29,7 @@ class Invoice {
       rollNumber: json['rollNumber'] ?? '',
       billingMonth: json['billingMonth'] ?? '',
       amount: 'PKR ${json['amount'] ?? 0}', // Hardcoding PKR as per schema
+      fbrInvoiceNumber: json['fbrInvoiceNumber'],
       status: json['status'] == 'paid' ? InvoiceStatus.paid : InvoiceStatus.pending,
     );
   }
