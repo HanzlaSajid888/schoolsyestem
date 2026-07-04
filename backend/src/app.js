@@ -73,11 +73,11 @@ app.get(`${API_PREFIX}/db-status`, async (req, res) => {
     if (mongoose.connection.readyState !== 1) {
       await mongoose.connect(uri, { serverSelectionTimeoutMS: 3000 });
     }
-    const User = require('../models/User');
+    const User = require('./models/User'); // fixed path
     const count = await User.countDocuments();
     res.json({ status: 'Connected successfully!', count });
   } catch(e) {
-    res.json({ status: 'Error', error: e.message });
+    res.json({ status: 'Error', error: e.message, stack: e.stack });
   }
 });
 
