@@ -42,11 +42,14 @@ async function connectDB() {
     const User = require('../models/User');
     const admin = await User.findOne({ email: 'admin@admin.com' });
     if (!admin) {
+      await User.create({ name: 'Admin', email: 'admin@admin.com', password: '123456', role: 'admin' });
+      console.log('Default Admin user seeded.');
+    } else {
+      // Force update password to fix any double-hashed passwords from previous bug
       const bcrypt = require('bcryptjs');
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash('123456', salt);
-      await User.create({ name: 'Admin', email: 'admin@admin.com', password: hashedPassword, role: 'admin' });
-      console.log('Default Admin user seeded.');
+      await User.updateOne({ email: 'admin@admin.com' }, { $set: { password: hashedPassword } });
     }
   } catch (err) {
     console.error('MongoDB connection failed:', err.message);
