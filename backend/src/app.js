@@ -60,10 +60,34 @@ app.get(`${API_PREFIX}/health`, (req, res) => {
 app.get(`${API_PREFIX}/env-test`, (req, res) => {
   res.json({
     uri_present: !!process.env.MONGODB_URI,
-    uri_start: process.env.MONGODB_URI ? process.env.MONGODB_URI.substring(0, 15) : null,
+    uri_start: process.env.MONGODB_URI ? process.env.MONGODB_URI.substring(0, 25) : null,
     jwt_present: !!process.env.JWT_SECRET,
     vercel: process.env.VERCEL
   });
+});
+
+app.get(`${API_PREFIX}/db-status`, async (req, res) => {
+  const mongoose = require('mongoose');
+  let uri = process.env.MONGODB_URI;
+  if (uri && uri.startsWith('MONGODB_URI=')) {
+    uri = uri.replace('MONGODB_URI=', '');
+  }
+  // also strip quotes if any
+  if (uri && uri.startsWith('"')) {
+    uri = uri.replace(/^"|"$/g, '');
+  }
+  if (uri && uri.startsWith("'")) {
+    uri = uri.replace(/^'|'$/g, '');
+  }
+  if (uri && uri.startsWith("MONGODB_URI=")) {
+    uri = uri.replace("MONGODB_URI=", "");
+  }
+  try {
+    await mongoose.connect(uri, { serverSelectionTimeoutMS: 3000 });
+    res.json({ status: 'Connected successfully!', db: mongoose.connection.name });
+  } catch(e) {
+    res.json({ status: 'Error', error: e.message, uri_prefix: uri ? uri.substring(0,25) : null });
+  }
 });
 
 app.use(API_PREFIX, routes);
