@@ -67,7 +67,18 @@ app.get(`${API_PREFIX}/env-test`, (req, res) => {
 });
 
 app.get(`${API_PREFIX}/db-status`, async (req, res) => {
-  res.json({ exact_value: process.env.MONGODB_URI ? process.env.MONGODB_URI.substring(0, 100) : null });
+  const mongoose = require('mongoose');
+  let uri = process.env.MONGODB_URI;
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      await mongoose.connect(uri, { serverSelectionTimeoutMS: 3000 });
+    }
+    const User = require('../models/User');
+    const count = await User.countDocuments();
+    res.json({ status: 'Connected successfully!', count });
+  } catch(e) {
+    res.json({ status: 'Error', error: e.message });
+  }
 });
 
 app.use(API_PREFIX, routes);
