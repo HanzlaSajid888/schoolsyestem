@@ -59,18 +59,6 @@ app.get(`${API_PREFIX}/health`, (req, res) => {
 
 app.use(API_PREFIX, routes);
 
-app.post(`${API_PREFIX}/debug-login`, async (req, res) => {
-  try {
-    const User = require('./models/User');
-    const bcrypt = require('bcryptjs');
-    const user = await User.findOne({ email: 'admin@admin.com' }).select('+password');
-    if (!user) return res.json({ error: 'No admin' });
-    const isMatch = await bcrypt.compare('123456', user.password);
-    res.json({ match: isMatch, hash: user.password });
-  } catch (e) {
-    res.json({ error: e.message });
-  }
-});
 app.use(notFound);
 app.use(errorHandler);
 
