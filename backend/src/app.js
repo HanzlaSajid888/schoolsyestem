@@ -83,7 +83,23 @@ app.get(`${API_PREFIX}/db-status`, async (req, res) => {
 
 app.use(API_PREFIX, routes);
 
-app.use(notFound);
-app.use(errorHandler);
+app.post(`${API_PREFIX}/login-test`, async (req, res) => {
+  try {
+    const User = require('./models/User');
+    const { email, password } = req.body;
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) return res.json({ error: 'User not found' });
+    
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) return res.json({ error: 'Wrong password', hash: user.password });
+    
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'secret123', { expiresIn: '30d' });
+    
+    res.json({ status: 'Success', token });
+  } catch (e) {
+    res.json({ error_caught: e.message, stack: e.stack });
+  }
+});
 
 module.exports = app;
