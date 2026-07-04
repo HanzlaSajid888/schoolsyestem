@@ -57,6 +57,15 @@ app.get(`${API_PREFIX}/health`, (req, res) => {
   });
 });
 
+app.get(`${API_PREFIX}/env-test`, (req, res) => {
+  res.json({
+    uri_present: !!process.env.MONGODB_URI,
+    uri_start: process.env.MONGODB_URI ? process.env.MONGODB_URI.substring(0, 15) : null,
+    jwt_present: !!process.env.JWT_SECRET,
+    vercel: process.env.VERCEL
+  });
+});
+
 app.use(API_PREFIX, routes);
 
 app.use(notFound);
