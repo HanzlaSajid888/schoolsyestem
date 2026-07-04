@@ -16,7 +16,11 @@ mongoose.connection.on('disconnected', () => {
  * @returns {Promise<void>}
  */
 async function connectDB() {
-  const uri = process.env.MONGODB_URI;
+  let uri = process.env.MONGODB_URI;
+
+  if (uri && uri.startsWith('MONGODB_URI=')) {
+    uri = uri.replace('MONGODB_URI=', '');
+  }
 
   if (!uri) {
     console.error('MONGODB_URI is required.');
